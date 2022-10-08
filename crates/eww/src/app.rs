@@ -60,6 +60,15 @@ pub enum DaemonCommand {
         windows: Vec<String>,
         sender: DaemonResponseSender,
     },
+    ShowWindow {
+        window_name: String,
+        should_toggle: bool,
+        sender: DaemonResponseSender,
+    },
+    HideWindow {
+        window_name: String,
+        sender: DaemonResponseSender,
+    },
     KillServer,
     CloseAll,
     PrintState {
@@ -199,6 +208,14 @@ impl App {
                 DaemonCommand::CloseWindows { windows, sender } => {
                     let errors = windows.iter().map(|window| self.close_window(window)).filter_map(Result::err);
                     sender.respond_with_error_list(errors)?;
+                }
+                DaemonCommand::ShowWindow { window_name, should_toggle, sender } => {
+                    let result = self.show_window(&window_name, should_toggle);
+                    sender.respond_with_result(result)?;
+                }
+                DaemonCommand::HideWindow { window_name, sender } => {
+                    let result = self.hide_window(&window_name);
+                    sender.respond_with_result(result)?;
                 }
                 DaemonCommand::PrintState { all, sender } => {
                     let scope_graph = self.scope_graph.borrow();
@@ -387,6 +404,35 @@ impl App {
         } else {
             Ok(())
         }
+    }
+
+    /// Call hide on the gtk window
+    fn show_window(&mut self, window_name: &str, should_toggle: bool) -> Result<()> {
+        let eww_window = self
+            .open_windows
+            .get(window_name)
+            .with_context(|| format!("Tried to show window named '{}', but no such window was open", window_name))?;
+
+        if should_toggle && eww_window.gtk_window.get_visible() {
+            log::info!("Hiding window {}", window_name);
+            eww_window.gtk_window.hide();
+        } else {
+            log::info!("Showing window {}", window_name);
+            eww_window.gtk_window.show();
+        };
+        Ok(())
+    }
+
+    /// Set the hide property on the gtk window
+    fn hide_window(&mut self, window_name: &str) -> Result<()> {
+        let eww_window = self
+            .open_windows
+            .get(window_name)
+            .with_context(|| format!("Tried to hide window named '{}', but no such window was open", window_name))?;
+
+        log::info!("Hiding window {}", window_name);
+        eww_window.gtk_window.hide();
+        Ok(())
     }
 
     /// Load the given configuration, reloading all script-vars and attempting to reopen all windows that where opened.

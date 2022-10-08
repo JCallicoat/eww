@@ -132,6 +132,20 @@ pub enum ActionWithServer {
     #[clap(name = "close", alias = "c")]
     CloseWindows { windows: Vec<String> },
 
+    /// Show an open window
+    #[clap(name = "show", alias = "s")]
+    ShowWindow {
+        window_name: String,
+
+        /// If a window is already shown, hide it instead
+        #[clap(long = "toggle")]
+        should_toggle: bool,
+    },
+
+    /// Show an open window
+    #[clap(name = "hide", alias = "h")]
+    HideWindow { window_name: String },
+
     /// Reload the configuration
     #[clap(name = "reload", alias = "r")]
     Reload,
@@ -226,6 +240,12 @@ impl ActionWithServer {
             }
             ActionWithServer::CloseWindows { windows } => {
                 return with_response_channel(|sender| app::DaemonCommand::CloseWindows { windows, sender });
+            }
+            ActionWithServer::ShowWindow { window_name, should_toggle } => {
+                return with_response_channel(|sender| app::DaemonCommand::ShowWindow { window_name, should_toggle, sender });
+            }
+            ActionWithServer::HideWindow { window_name } => {
+                return with_response_channel(|sender| app::DaemonCommand::HideWindow { window_name, sender });
             }
             ActionWithServer::Reload => return with_response_channel(app::DaemonCommand::ReloadConfigAndCss),
             ActionWithServer::ShowWindows => return with_response_channel(app::DaemonCommand::PrintWindows),
